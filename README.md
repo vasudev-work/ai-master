@@ -7,7 +7,7 @@ A fast, multilingual, multimodal AI assistant for Android:
 - Smart Lens: camera/gallery image analysis with on-device OCR (Latin + Devanagari scripts), image labels, and face count
 - Voice input and output with Indian language support (en-IN, hi-IN, ta-IN, te-IN, mr-IN, bn-IN)
 - Hinglish code-mixing handled naturally
-- Web search grounding (Brave Search API - Bing Search API was retired by Microsoft in Aug 2025)
+- Multi-source web search: Wikipedia (keyless) + DuckDuckGo (keyless), plus Brave if you add a key
 - Local Vault: chat history in a local database, API keys in encrypted storage, Private Mode for 100% offline use
 - Four answer modes: Ask, Web (cited), Study (tutor) and Research (multi-source cited report)
 - Memory: save what the assistant should remember about you (stored only on-device, editable/deletable)
