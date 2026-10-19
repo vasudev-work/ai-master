@@ -82,4 +82,7 @@ dependencies {
 
     // On-device LLM inference (offline story mode)
     implementation(libs.mediapipe.tasks.genai)
+
+    // On-device text-to-image (offline image mode)
+    implementation(libs.mediapipe.tasks.vision.image.generator)
 }
