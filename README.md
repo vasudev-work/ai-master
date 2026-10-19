@@ -9,6 +9,8 @@ A fast, multilingual, multimodal AI assistant for Android:
 - Hinglish code-mixing handled naturally
 - Web search grounding (Brave Search API - Bing Search API was retired by Microsoft in Aug 2025)
 - Local Vault: chat history in a local database, API keys in encrypted storage, Private Mode for 100% offline use
+- Four answer modes: Ask, Web (cited), Study (tutor) and Research (multi-source cited report)
+- Memory: save what the assistant should remember about you (stored only on-device, editable/deletable)
 - Quick action chips: Translate, Summarize, Web
 - UPI support link for the developer (vasudevupi@upi)
 
@@ -26,6 +28,22 @@ Short version:
 - `di/` — Hilt dependency-injection bindings
 - `ui/` — Jetpack Compose screens (chat, settings, about, theme)
 - `res/` — strings for 6 languages, drawables, themes
+
+## Answer modes
+
+Pick a mode above the input box in the chat screen:
+
+- **Ask** — normal chat.
+- **Web** — forces a web search and asks the model to cite the source domain for each claim.
+- **Study** — a patient tutor: explains in small steps, gives an example, then asks practice questions.
+- **Research** — Deep Research: the app plans 3 search queries, runs them, then writes a structured report
+  (summary, key findings, uncertainty, sources) with bracketed citations. Needs a Brave Search API key.
+
+## Memory
+
+In **Settings → Memory** you can write anything you want the assistant to remember (for example
+"I am a student; reply in simple Hindi"). It is stored only on the device, is added to every prompt,
+and you can clear the box and tap Save to forget it.
 
 ## On-device story mode (offline)
 
