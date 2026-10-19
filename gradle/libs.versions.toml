@@ -19,6 +19,7 @@ mlkitText = "16.0.1"
 mlkitLabel = "17.0.0"
 mlkitFace = "16.1.7"
 mediapipeTasksGenai = "0.10.27"
+mediapipeImageGen = "0.10.26.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -47,6 +48,7 @@ mlkit-text-recognition-devanagari = { module = "com.google.mlkit:text-recognitio
 mlkit-image-labeling = { module = "com.google.mlkit:image-labeling", version.ref = "mlkitLabel" }
 mlkit-face-detection = { module = "com.google.mlkit:face-detection", version.ref = "mlkitFace" }
 mediapipe-tasks-genai = { module = "com.google.mediapipe:tasks-genai", version.ref = "mediapipeTasksGenai" }
+mediapipe-tasks-vision-image-generator = { module = "com.google.mediapipe:tasks-vision-image-generator", version.ref = "mediapipeImageGen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
