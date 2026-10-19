@@ -3,7 +3,10 @@ package com.vasudev.ai.master.ui.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vasudev.ai.master.core.ChatMessage
+import com.vasudev.ai.master.core.ChatMode
+import com.vasudev.ai.master.core.Config
 import com.vasudev.ai.master.core.SearchResult
+import com.vasudev.ai.master.core.parseSearchQueries
 import com.vasudev.ai.master.data.SecurePrefs
 import com.vasudev.ai.master.data.SettingsStore
 import com.vasudev.ai.master.data.UiSettings
@@ -18,10 +21,11 @@ import com.vasudev.ai.master.data.remote.SearchApi
 import com.vasudev.ai.master.data.remote.WireMessage
 import com.vasudev.ai.master.data.remote.buildLocalAnswer
 import com.vasudev.ai.master.data.remote.buildOnDeviceStoryPrompt
+import com.vasudev.ai.master.data.remote.buildResearchReportPrompt
 import com.vasudev.ai.master.data.remote.buildSystemPrompt
+import com.vasudev.ai.master.data.remote.researchPlannerPrompt
 import com.vasudev.ai.master.data.speech.SpeechToText
 import com.vasudev.ai.master.data.speech.TtsEngine
-import com.vasudev.ai.master.core.Config
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -57,7 +61,8 @@ class ChatViewModel @Inject constructor(
         val streamingId: Long? = null,
         val tier: String = "ONLINE",
         val error: String? = null,
-        val ttsEnabled: Boolean = false
+        val ttsEnabled: Boolean = false,
+        val mode: ChatMode = ChatMode.ASK
     )
 
     private val _ui = MutableStateFlow(UiState())
@@ -87,6 +92,8 @@ class ChatViewModel @Inject constructor(
     fun onInput(text: String) = _ui.update { it.copy(input = text) }
 
     fun onImage(uri: String?) = _ui.update { it.copy(pendingImageUri = uri) }
+
+    fun setMode(mode: ChatMode) = _ui.update { it.copy(mode = mode) }
 
     fun toggleTts() {
         if (_ui.value.ttsEnabled) tts.stop()
@@ -141,6 +148,7 @@ class ChatViewModel @Inject constructor(
         val rawText = state.input.trim()
         val image = state.pendingImageUri
         if (rawText.isEmpty() && image == null) return
+        val mode = state.mode
 
         if (!settings.privateMode && prefs.llmApiKey.isBlank()) {
             _ui.update { it.copy(error = "Add your AI provider API key in Settings first.") }
@@ -224,15 +232,93 @@ class ChatViewModel @Inject constructor(
                     return@launch
                 }
 
+                // ---- Deep Research: plan -> search -> synthesise a cited report ----
+                if (mode == ChatMode.RESEARCH) {
+                    if (prefs.searchApiKey.isBlank()) {
+                        _ui.update {
+                            it.copy(error = "Deep Research needs a web-search API key (Brave) in Settings.")
+                        }
+                        return@launch
+                    }
+                    val assistantId = dao.insert(
+                        MessageEntity(sessionId = SESSION, role = "assistant", content = "", modelTier = "RESEARCH")
+                    )
+                    streamingId.value = assistantId
+                    _ui.update { it.copy(streamingId = assistantId, tier = "RESEARCH") }
+                    streamBuffer.value = "Planning research…"
+
+                    // 1) plan a few search queries
+                    val planReq = CompletionRequest(
+                        model = prefs.model.ifBlank { Config.DEFAULT_MODEL },
+                        messages = listOf(
+                            WireMessage("system", researchPlannerPrompt()),
+                            WireMessage("user", rawText)
+                        ),
+                        stream = false
+                    )
+                    val plan = runCatching {
+                        llm.completeOnce(prefs.baseUrl, prefs.llmApiKey, planReq)
+                    }.getOrDefault("")
+                    val queries = parseSearchQueries(plan, rawText)
+
+                    // 2) run the searches and collect notes
+                    val notes = StringBuilder()
+                    var sources = 0
+                    for (q in queries) {
+                        streamBuffer.value = "Searching: $q …"
+                        val res = runCatching { search.search(q, 5) }.getOrDefault(emptyList())
+                        res.forEach {
+                            notes.append("[").append(it.domain()).append("] ")
+                                .append(it.title).append(": ").append(it.snippet).append('\n')
+                            sources++
+                        }
+                    }
+
+                    // 3) synthesise the report, streamed
+                    val reportReq = CompletionRequest(
+                        model = prefs.model.ifBlank { Config.DEFAULT_MODEL },
+                        messages = listOf(
+                            WireMessage(
+                                "system",
+                                buildResearchReportPrompt(
+                                    rawText, notes.toString(), settings.languageTag, settings.memory
+                                )
+                            )
+                        ),
+                        stream = true
+                    )
+                    streamBuffer.value = "Writing report…"
+                    val builder = StringBuilder()
+                    llm.streamChat(prefs.baseUrl, prefs.llmApiKey, reportReq).collect { chunk ->
+                        builder.append(chunk)
+                        streamBuffer.value = builder.toString()
+                    }
+                    val finalTier = if (sources > 0) "RESEARCH · $sources sources" else "RESEARCH"
+                    dao.updateContent(assistantId, builder.toString())
+                    streamingId.value = null
+                    streamBuffer.value = ""
+                    _ui.update { it.copy(streamingId = null, tier = finalTier) }
+                    if (_ui.value.ttsEnabled) {
+                        tts.speak(builder.toString(), settings.languageTag)
+                    }
+                    return@launch
+                }
+
+                // ---- Normal / Web / Study ----
                 val history = dao.history(SESSION)
                     .filter { it.content.isNotBlank() }
                     .map { WireMessage(it.role, it.content) }
 
                 var results: List<SearchResult> = emptyList()
-                if ((forceWebSearch || settings.grounded) && prefs.searchApiKey.isNotBlank()) {
+                val wantSearch = forceWebSearch || settings.grounded || mode == ChatMode.WEB
+                if (wantSearch && prefs.searchApiKey.isNotBlank()) {
                     runCatching { search.search(rawText) }.onSuccess { results = it }
                 }
-                val tier = if (results.isNotEmpty()) "ONLINE · WEB" else "ONLINE"
+                val tier = when {
+                    mode == ChatMode.STUDY -> "STUDY"
+                    results.isNotEmpty() -> "ONLINE · WEB"
+                    else -> "ONLINE"
+                }
                 _ui.update { it.copy(tier = tier) }
 
                 val assistantId = dao.insert(
@@ -249,7 +335,7 @@ class ChatViewModel @Inject constructor(
                             "system",
                             buildSystemPrompt(
                                 ocr, labels, results, settings.languageTag,
-                                settings.styleExamples, faces
+                                settings.styleExamples, faces, mode, settings.memory
                             )
                         )
                     ) + history,
