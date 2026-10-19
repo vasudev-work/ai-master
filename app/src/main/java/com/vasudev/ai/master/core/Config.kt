@@ -36,6 +36,18 @@ object Config {
         "https://huggingface.co/nikhil2024/gemma3-1b-it-litert-mirror/resolve/main/gemma3-1b-it-int4.task"
     const val ON_DEVICE_MIN_VALID_BYTES = 200L * 1024 * 1024
 
+    // --- On-device text-to-image (offline Image mode) ---
+    // Public, unmodified SD 1.5 bundle converted for the MediaPipe Image Generator.
+    // License: CreativeML OpenRAIL-M (see the model page).
+    const val IMAGE_MODEL_DIR = "sd15_bins"
+    const val IMAGE_MODEL_URL =
+        "https://huggingface.co/cuesetac/sd15-mediapipe/resolve/main/sd15-mediapipe.zip"
+    const val IMAGE_MODEL_MIN_BYTES = 200L * 1024 * 1024
+    const val IMAGE_ITERATIONS = 20
+
+    // --- Keyless fallback image service (no API key) ---
+    const val IMAGE_POLLINATIONS_URL = "https://image.pollinations.ai/prompt/"
+
     // --- Chat session ---
     const val SESSION_ID = 1L
 }
