@@ -33,6 +33,7 @@ class SettingsViewModel @Inject constructor(
     val model = MutableStateFlow(prefs.model)
     val searchKey = MutableStateFlow(prefs.searchApiKey)
     val styleExamples = MutableStateFlow("")
+    val memory = MutableStateFlow("")
 
     val settings: StateFlow<UiSettings> = settingsStore.flow
         .stateIn(viewModelScope, SharingStarted.Eagerly, UiSettings())
@@ -44,7 +45,10 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            settingsStore.flow.collect { styleExamples.value = it.styleExamples }
+            settingsStore.flow.collect {
+                styleExamples.value = it.styleExamples
+                memory.value = it.memory
+            }
         }
         refreshModel()
     }
@@ -54,7 +58,10 @@ class SettingsViewModel @Inject constructor(
         prefs.llmApiKey = apiKey.value.trim()
         prefs.model = model.value.trim().ifBlank { Config.DEFAULT_MODEL }
         prefs.searchApiKey = searchKey.value.trim()
-        viewModelScope.launch { settingsStore.setStyleExamples(styleExamples.value) }
+        viewModelScope.launch {
+            settingsStore.setStyleExamples(styleExamples.value)
+            settingsStore.setMemory(memory.value)
+        }
     }
 
     fun setLanguage(tag: String) = viewModelScope.launch { settingsStore.setLanguage(tag) }
