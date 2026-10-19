@@ -31,6 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.vasudev.ai.master.R
+import com.vasudev.ai.master.core.ChatMode
 import com.vasudev.ai.master.data.ImageVault
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -165,6 +167,22 @@ fun ChatScreen(
                                 )
                             }
                         }
+                    }
+                }
+                // Mode selector: Ask / Web / Study / Research
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(start = 12.dp, end = 12.dp, top = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ChatMode.entries.forEach { m ->
+                        FilterChip(
+                            selected = ui.mode == m,
+                            onClick = { viewModel.setMode(m) },
+                            label = { Text(m.label) }
+                        )
                     }
                 }
                 Row(
