@@ -1,5 +1,6 @@
 package com.vasudev.ai.master.data.remote
 
+import com.vasudev.ai.master.core.ChatMode
 import com.vasudev.ai.master.core.domain
 import com.vasudev.ai.master.core.SearchResult
 
@@ -12,16 +13,45 @@ fun systemInstruction(languageTag: String): String = when (languageTag) {
     else -> "You are myAi, a fast AI assistant made in India. Reply in clear, simple Indian English. If the user writes Hinglish (Hindi-English code-mix), reply in natural Hinglish."
 }
 
+/** Tutor behaviour for Study Mode. */
+fun studyInstruction(languageTag: String): String = when (languageTag) {
+    "hi-IN" -> "आप एक धैर्यवान शिक्षक हैं। सीधे पूरा उत्तर न दें — पहले आसान भाषा में समझाएँ, छोटे steps में तोड़ें, एक उदाहरण दें, फिर 1-2 practice सवाल पूछें। अगर उपयोगकर्ता गलती करे तो विनम्रता से सुधारें।"
+    else -> "You are a patient tutor. Do not just hand over the answer — explain in simple language, break it into small steps, give one example, then ask 1-2 practice questions. If the learner makes a mistake, correct it kindly."
+}
+
+fun memoryBlock(memory: String): String =
+    if (memory.isBlank()) ""
+    else "\n\nThe user asked you to remember the following about them:\n" + memory.trim().take(2000)
+
 fun buildSystemPrompt(
     ocr: String?,
     labels: List<String>,
     results: List<SearchResult>,
     languageTag: String,
     styleExamples: String = "",
-    faceCount: Int = 0
+    faceCount: Int = 0,
+    mode: ChatMode = ChatMode.ASK,
+    memory: String = ""
 ): String =
     buildString {
         append(systemInstruction(languageTag))
+        append(memoryBlock(memory))
+        when (mode) {
+            ChatMode.STUDY -> {
+                appendLine()
+                appendLine()
+                append(studyInstruction(languageTag))
+            }
+            ChatMode.WEB -> {
+                appendLine()
+                appendLine()
+                append("Prefer the fresh web results below. For every claim taken from them, cite the source domain in square brackets, like [example.com].")
+            }
+            ChatMode.RESEARCH -> {
+                // Research uses its own dedicated prompt (see buildResearchReportPrompt).
+            }
+            ChatMode.ASK -> Unit
+        }
         if (styleExamples.isNotBlank()) {
             appendLine()
             appendLine()
@@ -57,6 +87,41 @@ fun buildSystemPrompt(
             }
         }
     }
+
+// ---------------------------------------------------------------------------
+// Deep Research
+// ---------------------------------------------------------------------------
+
+/** Step 1: ask the model for a few focused search queries. */
+fun researchPlannerPrompt(): String =
+    "You plan web research. Given the user's question, output EXACTLY 3 short web-search queries, " +
+        "one per line and nothing else. No numbering, no bullets, no explanations, no quotes."
+
+/** Step 3: turn the gathered web notes into a structured, cited report. */
+fun buildResearchReportPrompt(
+    question: String,
+    notes: String,
+    languageTag: String,
+    memory: String = ""
+): String = buildString {
+    append(systemInstruction(languageTag))
+    append(memoryBlock(memory))
+    appendLine()
+    appendLine()
+    appendLine("You are doing DEEP RESEARCH. Using ONLY the web notes below, write a structured report:")
+    appendLine("1. Short answer — 2-4 sentences.")
+    appendLine("2. Key findings — bullet points.")
+    appendLine("3. Uncertainty — anything the notes disagree on, or that is missing.")
+    appendLine("4. Sources — list the domains you actually used.")
+    appendLine()
+    appendLine("Cite the source domain in square brackets after each claim, like [example.com]. If the notes are not enough to answer, say so plainly instead of guessing.")
+    appendLine()
+    appendLine("Web notes:")
+    append(notes.take(8000))
+    appendLine()
+    appendLine("User question: ")
+    append(question.trim())
+}
 
 fun buildOnDeviceStoryPrompt(styleExamples: String, userText: String): String = buildString {
     appendLine("You are a creative story writer. Write in a clear, natural style.")
