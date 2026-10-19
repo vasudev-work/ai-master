@@ -56,6 +56,7 @@ fun SettingsScreen(
     val searchKey by viewModel.searchKey.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val styleExamples by viewModel.styleExamples.collectAsStateWithLifecycle()
+    val memory by viewModel.memory.collectAsStateWithLifecycle()
     val modelReady by viewModel.modelReady.collectAsStateWithLifecycle()
     val modelSizeMb by viewModel.modelSizeMb.collectAsStateWithLifecycle()
     val downloadState by viewModel.download.collectAsStateWithLifecycle()
@@ -272,6 +273,29 @@ fun SettingsScreen(
         )
         Text(
             text = "Saved on this device. New stories will follow this style. Tap Save to keep it.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+
+        // ---------- Memory ----------
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Memory (what the assistant should remember)",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        OutlinedTextField(
+            value = memory,
+            onValueChange = { viewModel.memory.value = it },
+            label = { Text("e.g. I am a student; reply in simple Hindi; my exam is in March") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            minLines = 3,
+            maxLines = 8
+        )
+        Text(
+            text = "Stored only on this device. Clear this box and tap Save to forget it.",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
