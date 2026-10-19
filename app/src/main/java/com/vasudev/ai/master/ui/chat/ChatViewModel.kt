@@ -6,6 +6,7 @@ import com.vasudev.ai.master.core.ChatMessage
 import com.vasudev.ai.master.core.ChatMode
 import com.vasudev.ai.master.core.Config
 import com.vasudev.ai.master.core.SearchResult
+import com.vasudev.ai.master.core.domain
 import com.vasudev.ai.master.core.parseSearchQueries
 import com.vasudev.ai.master.data.SecurePrefs
 import com.vasudev.ai.master.data.SettingsStore
