@@ -1,0 +1,9 @@
+<resources>
+    <string name="hint_ask">ఏదైనా అడగండి…</string>
+    <string name="title_settings">సెట్టింగ్‌లు</string>
+    <string name="title_about">myAi గురించి</string>
+    <string name="chip_translate">అనువదించు</string>
+    <string name="chip_summarize">సంగ్రహం</string>
+    <string name="chip_web">వెబ్</string>
+    <string name="chip_pdf">PDF</string>
+</resources>
