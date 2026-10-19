@@ -38,6 +38,9 @@ interface ChatDao {
     @Query("UPDATE messages SET content = :content WHERE id = :id")
     suspend fun updateContent(id: Long, content: String)
 
+    @Query("UPDATE messages SET content = :content, imageUri = :imageUri WHERE id = :id")
+    suspend fun updateContentAndImage(id: Long, content: String, imageUri: String?)
+
     @Query("DELETE FROM messages")
     suspend fun clear()
 }
