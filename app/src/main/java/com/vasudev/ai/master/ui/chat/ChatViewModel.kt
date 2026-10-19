@@ -235,12 +235,6 @@ class ChatViewModel @Inject constructor(
 
                 // ---- Deep Research: plan -> search -> synthesise a cited report ----
                 if (mode == ChatMode.RESEARCH) {
-                    if (prefs.searchApiKey.isBlank()) {
-                        _ui.update {
-                            it.copy(error = "Deep Research needs a web-search API key (Brave) in Settings.")
-                        }
-                        return@launch
-                    }
                     val assistantId = dao.insert(
                         MessageEntity(sessionId = SESSION, role = "assistant", content = "", modelTier = "RESEARCH")
                     )
@@ -267,7 +261,9 @@ class ChatViewModel @Inject constructor(
                     var sources = 0
                     for (q in queries) {
                         streamBuffer.value = "Searching: $q …"
-                        val res = runCatching { search.search(q, 5) }.getOrDefault(emptyList())
+                        val res = runCatching {
+                            search.search(q, settings.languageTag, 5)
+                        }.getOrDefault(emptyList())
                         res.forEach {
                             notes.append("[").append(it.domain()).append("] ")
                                 .append(it.title).append(": ").append(it.snippet).append('\n')
@@ -312,8 +308,9 @@ class ChatViewModel @Inject constructor(
 
                 var results: List<SearchResult> = emptyList()
                 val wantSearch = forceWebSearch || settings.grounded || mode == ChatMode.WEB
-                if (wantSearch && prefs.searchApiKey.isNotBlank()) {
-                    runCatching { search.search(rawText) }.onSuccess { results = it }
+                if (wantSearch) {
+                    runCatching { search.search(rawText, settings.languageTag) }
+                        .onSuccess { results = it }
                 }
                 val tier = when {
                     mode == ChatMode.STUDY -> "STUDY"
