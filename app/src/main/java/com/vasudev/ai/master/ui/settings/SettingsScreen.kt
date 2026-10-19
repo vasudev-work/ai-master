@@ -60,6 +60,9 @@ fun SettingsScreen(
     val modelReady by viewModel.modelReady.collectAsStateWithLifecycle()
     val modelSizeMb by viewModel.modelSizeMb.collectAsStateWithLifecycle()
     val downloadState by viewModel.download.collectAsStateWithLifecycle()
+    val imageModelReady by viewModel.imageModelReady.collectAsStateWithLifecycle()
+    val imageModelSizeMb by viewModel.imageModelSizeMb.collectAsStateWithLifecycle()
+    val imageDownloadState by viewModel.imageDownload.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -304,6 +307,57 @@ fun SettingsScreen(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
+
+        // ---------- On-device image model ----------
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "On-device image model (offline Image mode)",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        Text(
+            text = if (imageModelReady) "Image model ready ($imageModelSizeMb MB)"
+            else "Not downloaded yet (~2 GB, one-time). Without it, Image mode uses a free keyless service.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+        if (!imageModelReady) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = viewModel::downloadImageModel,
+                    enabled = imageDownloadState !is DownloadState.Progress
+                ) { Text("Download image model") }
+            }
+            (imageDownloadState as? DownloadState.Progress)?.let { p ->
+                LinearProgressIndicator(
+                    progress = { p.fraction.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                OutlinedButton(onClick = viewModel::deleteImageModel) { Text("Delete image model") }
+            }
+        }
+        (imageDownloadState as? DownloadState.Failed)?.let { f ->
+            Text(
+                text = "Image model download failed: ${f.message}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
         Row(
