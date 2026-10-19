@@ -1,0 +1,41 @@
+name: Build debug APK
+
+# Builds an installable debug APK on GitHub's servers and uploads it as an
+# artifact — no Android Studio needed locally.
+#
+# How to use:
+#   1. Open the "Actions" tab -> "Build debug APK" -> "Run workflow".
+#   2. When it finishes, download the "app-debug-apk" artifact and install it.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
