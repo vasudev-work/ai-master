@@ -1,5 +1,7 @@
 package com.vasudev.ai.master.ui.chat
 
+import android.content.Context
+import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vasudev.ai.master.core.ChatMessage
@@ -8,6 +10,7 @@ import com.vasudev.ai.master.core.Config
 import com.vasudev.ai.master.core.SearchResult
 import com.vasudev.ai.master.core.domain
 import com.vasudev.ai.master.core.parseSearchQueries
+import com.vasudev.ai.master.data.ImageVault
 import com.vasudev.ai.master.data.SecurePrefs
 import com.vasudev.ai.master.data.SettingsStore
 import com.vasudev.ai.master.data.UiSettings
@@ -15,6 +18,7 @@ import com.vasudev.ai.master.data.db.ChatDao
 import com.vasudev.ai.master.data.db.MessageEntity
 import com.vasudev.ai.master.data.db.toDomain
 import com.vasudev.ai.master.data.mlkit.VisionEngine
+import com.vasudev.ai.master.data.ondevice.ImageGeneratorEngine
 import com.vasudev.ai.master.data.ondevice.OnDeviceEngine
 import com.vasudev.ai.master.data.remote.CompletionRequest
 import com.vasudev.ai.master.data.remote.LlmApi
@@ -28,6 +32,7 @@ import com.vasudev.ai.master.data.remote.researchPlannerPrompt
 import com.vasudev.ai.master.data.speech.SpeechToText
 import com.vasudev.ai.master.data.speech.TtsEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +44,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import javax.inject.Inject
 
 @HiltViewModel
@@ -51,7 +59,9 @@ class ChatViewModel @Inject constructor(
     private val tts: TtsEngine,
     private val settingsStore: SettingsStore,
     private val prefs: SecurePrefs,
-    private val onDevice: OnDeviceEngine
+    private val onDevice: OnDeviceEngine,
+    private val imageGen: ImageGeneratorEngine,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     data class UiState(
@@ -233,6 +243,48 @@ class ChatViewModel @Inject constructor(
                     return@launch
                 }
 
+                // ---- Image mode: on-device generation, else a keyless service ----
+                if (mode == ChatMode.IMAGE) {
+                    val imageMsgId = dao.insert(
+                        MessageEntity(
+                            sessionId = SESSION,
+                            role = "assistant",
+                            content = "Generating image…",
+                            modelTier = "IMAGE"
+                        )
+                    )
+                    streamingId.value = imageMsgId
+                    _ui.update { it.copy(streamingId = imageMsgId, tier = "IMAGE") }
+                    streamBuffer.value = "Generating image…"
+
+                    val onDevicePath = withContext(Dispatchers.IO) {
+                        if (imageGen.loadIfNeeded()) {
+                            val bmp = imageGen.generate(rawText)
+                            if (bmp != null) ImageVault.saveToVault(appContext, bmp) else null
+                        } else null
+                    }
+                    val path = onDevicePath ?: pollinationsImage(rawText)
+
+                    if (path != null) {
+                        val where = if (onDevicePath != null) "on your phone" else "from a free keyless service"
+                        dao.updateContentAndImage(
+                            imageMsgId,
+                            "Here is your image for \"$rawText\" ($where).",
+                            path
+                        )
+                        _ui.update { it.copy(tier = if (onDevicePath != null) "IMAGE · ON-DEVICE" else "IMAGE · ONLINE") }
+                    } else {
+                        dao.updateContent(
+                            imageMsgId,
+                            "Could not create an image. In Settings, download the on-device image model, or check your internet."
+                        )
+                    }
+                    streamingId.value = null
+                    streamBuffer.value = ""
+                    _ui.update { it.copy(streamingId = null) }
+                    return@launch
+                }
+
                 // ---- Deep Research: plan -> search -> synthesise a cited report ----
                 if (mode == ChatMode.RESEARCH) {
                     val assistantId = dao.insert(
@@ -361,6 +413,23 @@ class ChatViewModel @Inject constructor(
                 streamBuffer.value = ""
                 _ui.update { it.copy(streamingId = null, error = e.message ?: "Something went wrong") }
             }
+        }
+    }
+
+    /** Keyless fallback: fetch an image from Pollinations and save it locally. */
+    private suspend fun pollinationsImage(prompt: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val url = Config.IMAGE_POLLINATIONS_URL + URLEncoder.encode(prompt, "UTF-8")
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 30_000
+            conn.readTimeout = 120_000
+            conn.connect()
+            if (conn.responseCode != 200) return@withContext null
+            val bytes = conn.inputStream.use { it.readBytes() }
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@withContext null
+            ImageVault.saveToVault(appContext, bmp)
+        } catch (e: Exception) {
+            null
         }
     }
 
