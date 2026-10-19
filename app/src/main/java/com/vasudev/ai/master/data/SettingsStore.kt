@@ -21,7 +21,9 @@ data class UiSettings(
     /** User-saved example stories / style notes, kept on-device. */
     val styleExamples: String = "",
     /** When true, story generation runs on-device (offline) instead of the cloud. */
-    val onDeviceMode: Boolean = false
+    val onDeviceMode: Boolean = false,
+    /** Things the user asked the assistant to remember (viewable/editable/deletable). */
+    val memory: String = ""
 )
 
 @Singleton
@@ -33,6 +35,7 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
         val PRIVATE = booleanPreferencesKey("private_mode")
         val STYLE = stringPreferencesKey("style_examples")
         val ON_DEVICE = booleanPreferencesKey("on_device_mode")
+        val MEMORY = stringPreferencesKey("memory")
     }
 
     val flow: Flow<UiSettings> = context.dataStore.data.map { p ->
@@ -41,7 +44,8 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
             grounded = p[Keys.GROUNDED] ?: false,
             privateMode = p[Keys.PRIVATE] ?: false,
             styleExamples = p[Keys.STYLE] ?: "",
-            onDeviceMode = p[Keys.ON_DEVICE] ?: false
+            onDeviceMode = p[Keys.ON_DEVICE] ?: false,
+            memory = p[Keys.MEMORY] ?: ""
         )
     }
 
@@ -63,5 +67,9 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun setOnDevice(value: Boolean) {
         context.dataStore.edit { it[Keys.ON_DEVICE] = value }
+    }
+
+    suspend fun setMemory(text: String) {
+        context.dataStore.edit { it[Keys.MEMORY] = text }
     }
 }
