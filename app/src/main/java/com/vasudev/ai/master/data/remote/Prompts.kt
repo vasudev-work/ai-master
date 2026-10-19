@@ -50,6 +50,9 @@ fun buildSystemPrompt(
             ChatMode.RESEARCH -> {
                 // Research uses its own dedicated prompt (see buildResearchReportPrompt).
             }
+            ChatMode.IMAGE -> {
+                // Image mode does not use the chat prompt.
+            }
             ChatMode.ASK -> Unit
         }
         if (styleExamples.isNotBlank()) {
