@@ -1,0 +1,9 @@
+<resources>
+    <string name="hint_ask">কিছু জিজ্ঞাসা করুন…</string>
+    <string name="title_settings">সেটিংস</string>
+    <string name="title_about">myAi সম্পর্কে</string>
+    <string name="chip_translate">অনুবাদ করুন</string>
+    <string name="chip_summarize">সারসংক্ষেপ</string>
+    <string name="chip_web">ওয়েব</string>
+    <string name="chip_pdf">PDF</string>
+</resources>
