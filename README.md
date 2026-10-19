@@ -9,7 +9,7 @@ A fast, multilingual, multimodal AI assistant for Android:
 - Hinglish code-mixing handled naturally
 - Multi-source web search: Wikipedia + DuckDuckGo + Reddit (all keyless), plus Brave if you add a key
 - Local Vault: chat history in a local database, API keys in encrypted storage, Private Mode for 100% offline use
-- Four answer modes: Ask, Web (cited), Study (tutor) and Research (multi-source cited report)
+- Five answer modes: Ask, Web (cited), Study (tutor), Research (multi-source cited report) and Image (text-to-image)
 - Memory: save what the assistant should remember about you (stored only on-device, editable/deletable)
 - Quick action chips: Translate, Summarize, Web
 - UPI support link for the developer (vasudevupi@upi)
@@ -37,7 +37,11 @@ Pick a mode above the input box in the chat screen:
 - **Web** — forces a web search and asks the model to cite the source domain for each claim.
 - **Study** — a patient tutor: explains in small steps, gives an example, then asks practice questions.
 - **Research** — Deep Research: the app plans 3 search queries, runs them, then writes a structured report
-  (summary, key findings, uncertainty, sources) with bracketed citations. Needs a Brave Search API key.
+  (summary, key findings, uncertainty, sources) with bracketed citations.
+- **Image** — type a prompt and get an image. If the on-device image model is installed it runs **fully
+  offline** on the phone (Stable Diffusion 1.5 via MediaPipe); otherwise it falls back to a free,
+  keyless image service. Download the model in **Settings → On-device image model** (~2 GB, one-time;
+  an 8 GB-RAM phone is recommended).
 
 ## Memory
 
