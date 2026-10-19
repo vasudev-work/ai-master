@@ -26,6 +26,7 @@ import javax.inject.Singleton
  *  - **Wikipedia**  — official, keyless API. Always on. Uses the user's language
  *                     when it is an Indian language (hi, mr, bn, ta, te).
  *  - **DuckDuckGo** — keyless HTML endpoint (best effort; may be rate-limited).
+ *  - **Reddit**     — public `.json` search endpoint (community discussions).
  *  - **Brave**      — used only if the user saved a Brave Search API key.
  *
  * Note on iBharat.org and Qmamu: neither offers a public search API, so the app
@@ -44,6 +45,7 @@ class SearchApi @Inject constructor(
 
         runCatching { out += wikipedia(query, wikiLang(languageTag), 4) }
         runCatching { out += duckduckgo(query, 5) }
+        runCatching { out += reddit(query, 4) }
 
         val braveKey = prefs.searchApiKey
         if (braveKey.isNotBlank()) {
@@ -83,7 +85,7 @@ class SearchApi @Inject constructor(
             val title = o["title"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
             val pageId = o["pageid"]?.jsonPrimitive?.contentOrNull
             val snippet = (o["snippet"]?.jsonPrimitive?.contentOrNull ?: "").stripHtml()
-            val url = if (pageId != null) "https://$lang.wikipedia.org/"
+            val url = if (pageId != null) "https://$lang.wikipedia.org/?curid=$pageId"
             else "https://$lang.wikipedia.org/wiki/" + title.replace(' ', '_')
             SearchResult(title = "$title — Wikipedia", url = url, snippet = snippet)
         }
@@ -136,6 +138,32 @@ class SearchApi @Inject constructor(
             href.startsWith("http") -> href
             href.startsWith("//") -> "https:$href"
             else -> ""
+        }
+    }
+
+    // ------------------------------------------------------------------- Reddit
+    private suspend fun reddit(query: String, limit: Int): List<SearchResult> {
+        val resp = client.get("https://www.reddit.com/search.json") {
+            parameter("q", query)
+            parameter("limit", limit)
+            parameter("sort", "relevance")
+            header(HttpHeaders.UserAgent, "android:com.vasudev.ai.master:v1.0.0 (by /u/vasudev-work)")
+            header(HttpHeaders.Accept, "application/json")
+        }
+        if (!resp.status.isSuccess()) return emptyList()
+        val root = json.parseToJsonElement(resp.bodyAsText()).jsonObject
+        val children = root["data"]?.jsonObject?.get("children")?.jsonArray ?: return emptyList()
+        return children.mapNotNull { el ->
+            val d = el.jsonObject["data"]?.jsonObject ?: return@mapNotNull null
+            val title = d["title"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val permalink = d["permalink"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val sub = d["subreddit"]?.jsonPrimitive?.contentOrNull ?: ""
+            val selftext = d["selftext"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            SearchResult(
+                title = "$title — r/$sub",
+                url = "https://www.reddit.com$permalink",
+                snippet = selftext.take(300)
+            )
         }
     }
 
