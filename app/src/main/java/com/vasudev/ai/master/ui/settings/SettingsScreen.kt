@@ -128,7 +128,7 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp)
         )
         Text(
-            text = "Search already works without a key — the app queries Wikipedia and DuckDuckGo. Add a Brave key for extra, richer web results.",
+            text = "Search already works without a key — the app queries Wikipedia, DuckDuckGo and Reddit. Add a Brave key for extra, richer web results.",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
