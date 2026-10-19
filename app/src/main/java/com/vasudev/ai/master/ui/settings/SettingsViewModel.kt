@@ -9,6 +9,7 @@ import com.vasudev.ai.master.data.SettingsStore
 import com.vasudev.ai.master.data.UiSettings
 import com.vasudev.ai.master.data.db.ChatDao
 import com.vasudev.ai.master.data.ondevice.DownloadState
+import com.vasudev.ai.master.data.ondevice.ImageModelRepository
 import com.vasudev.ai.master.data.ondevice.ModelRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +26,8 @@ class SettingsViewModel @Inject constructor(
     private val prefs: SecurePrefs,
     private val settingsStore: SettingsStore,
     private val dao: ChatDao,
-    private val modelRepo: ModelRepository
+    private val modelRepo: ModelRepository,
+    private val imageModelRepo: ImageModelRepository
 ) : ViewModel() {
 
     val baseUrl = MutableStateFlow(prefs.baseUrl)
@@ -43,6 +45,11 @@ class SettingsViewModel @Inject constructor(
     val modelSizeMb = MutableStateFlow(modelRepo.modelSizeMb())
     val download = MutableStateFlow<DownloadState?>(null)
 
+    // --- on-device image model state ---
+    val imageModelReady = MutableStateFlow(imageModelRepo.isModelPresent())
+    val imageModelSizeMb = MutableStateFlow(imageModelRepo.modelSizeMb())
+    val imageDownload = MutableStateFlow<DownloadState?>(null)
+
     init {
         viewModelScope.launch {
             settingsStore.flow.collect {
@@ -51,6 +58,7 @@ class SettingsViewModel @Inject constructor(
             }
         }
         refreshModel()
+        refreshImageModel()
     }
 
     fun saveAll() {
@@ -97,5 +105,24 @@ class SettingsViewModel @Inject constructor(
         modelRepo.deleteModel()
         download.value = null
         refreshModel()
+    }
+
+    // --- on-device image model ---
+    private fun refreshImageModel() {
+        imageModelReady.value = imageModelRepo.isModelPresent()
+        imageModelSizeMb.value = imageModelRepo.modelSizeMb()
+    }
+
+    fun downloadImageModel() = viewModelScope.launch {
+        imageModelRepo.download().collect { state ->
+            imageDownload.value = state
+            if (state is DownloadState.Done || state is DownloadState.Failed) refreshImageModel()
+        }
+    }
+
+    fun deleteImageModel() {
+        imageModelRepo.deleteModel()
+        imageDownload.value = null
+        refreshImageModel()
     }
 }
