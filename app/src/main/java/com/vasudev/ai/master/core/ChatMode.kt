@@ -15,5 +15,8 @@ enum class ChatMode(val label: String) {
     STUDY("Study"),
 
     /** Multi-step research across several searches, producing a cited report. */
-    RESEARCH("Research")
+    RESEARCH("Research"),
+
+    /** Create an image from a text prompt (on-device, or a keyless service). */
+    IMAGE("Image")
 }
